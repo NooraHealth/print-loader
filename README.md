@@ -21,6 +21,22 @@ pip install print-loader
 Sometimes you want to put an indefinite loader for a set of statements to see
 the progress in terminal. This package tries to solve that exact problem.
 
+## Examples
+
+```python
+from print_loader import printl
+import time
+
+with printl("Sleeping"):
+    time.sleep(3)
+
+with printl("Sleeping", update_every=0.1):
+    time.sleep(3)
+
+with printl("Sleeping", update_every=0.1, loading_chars=["-", "|"]):
+    time.sleep(3)
+```
+
 ## License
 
 `print-loader` is distributed under the terms of the
