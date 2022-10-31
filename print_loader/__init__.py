@@ -65,15 +65,25 @@ class printl:
         self.start_time: datetime = None
         self.loading_chars = loading_chars
         self.file_pointer = file_pointer
+        self._clear_line = True
         self.__counter = -1
         self.__update_every = update_every if update_every > 0 else 0
         self.__timer: threading.Timer = None
         self.__timer_lock = threading.Lock()
 
     def elapsed_time(self) -> timedelta:
+        """Returns elapsed time as a timedelta type.
+        Formula used is (now - start).
+        To access start use .start_time"""
         return datetime.utcnow() - self.start_time
 
     def elapsed_time_str(self) -> str:
+        """Returns elapsed time as a string in the "d hh mm ss.ss" format where:
+        - d is days
+        - hh is hours
+        - mm is minutes
+        - ss.ss is seconds to 2 digits of precision after decimal point
+        """
         try:
             et = self.elapsed_time()
         except TypeError:
@@ -85,13 +95,23 @@ class printl:
         return f"{et.days}d {hrs:02}h {mins:02}m {secs:02}.{micros:0>2}s"
 
     def next_loading_char(self):
+        """Switches to the next loading char and returns it.
+
+        If it was the last loading char then it will cycle back to the first char in
+        the list and return it.
+
+        If loading_chars was set to be an empty list then an empty string will be
+        returned.
+        """
         if len(self.loading_chars) == 0:
             return ""
         self.__counter = (self.__counter + 1) % len(self.loading_chars)
         return self.loading_chars[self.__counter]
 
-    def print_loading(self):
-        clear_line(self.file_pointer)
+    def print_loading(self, clear=None):
+        """Force print loading message as specified by loading_fmt."""
+        self.clear_line(clear)
+
         self.file_pointer.write(
             self.loading_fmt.format(
                 message=self.message,
@@ -102,6 +122,11 @@ class printl:
         self.file_pointer.flush()
 
     def __print_loading_loop(self):
+        """Start an indefinite loop using daemon timer thread to keep calling
+        print_loading() at update_every seconds.
+
+        To stop this loop call __unset_timer method.
+        """
         if self.__update_every <= 0:
             return
 
@@ -115,6 +140,8 @@ class printl:
             self.__timer.start()
 
     def __unset_timer(self):
+        """Stops the timer started by __print_loading_loop gracefully which basically
+        pauses/stops the loading."""
         if self.__timer is None:
             return
 
@@ -122,18 +149,26 @@ class printl:
             self.__timer.cancel()
             self.__timer = None
 
-    def __enter__(self):
+    def clear_line(self, clear=None):
+        if clear is None:
+            clear = self._clear_line
+        if clear:
+            clear_line(self.file_pointer)
+
+    def start(self):
+        """Starts the loading and resets the start_time."""
         if self.__update_every > 0:
             self.__print_loading_loop()
         else:
             self.print_loading()
         self.start_time = datetime.utcnow()
-        return self
 
-    def __exit__(self, *args):
-        if self.__timer is not None:
-            self.__unset_timer()
-        clear_line(self.file_pointer)
+    def stop(self, clear=None):
+        """Stops the loading and prints the done message specified by done_fmt."""
+        self.__unset_timer()
+
+        self.clear_line(clear)
+
         self.file_pointer.write(
             self.done_fmt.format(
                 message=self.message, elapsed_time=self.elapsed_time_str()
@@ -141,6 +176,12 @@ class printl:
         )
         self.file_pointer.flush()
 
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *args):
+        self.stop()
+
     def __del__(self):
-        if self.__timer is not None:
-            self.__unset_timer()
+        self.__unset_timer()
