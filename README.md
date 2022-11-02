@@ -35,6 +35,10 @@ with printl("Sleeping", update_every=0.1):
 
 with printl("Sleeping", update_every=0.1, loading_chars=["-", "|"]):
     time.sleep(3)
+
+with open("large_file.txt", "w") as fp, printl("Writing to file"):
+    for i in range(50000):
+        fp.write(str(i) * 30000 + "\n")
 ```
 
 ## License
