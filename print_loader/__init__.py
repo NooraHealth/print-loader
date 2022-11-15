@@ -127,7 +127,7 @@ class printl:
             return f"0d 00h 00m 00.00s"
         micros = et.microseconds // 10000
         secs = et.seconds % 60
-        mins = et.seconds // 60
+        mins = (et.seconds // 60) % 60
         hrs = et.seconds // 3600
         return f"{et.days}d {hrs:02}h {mins:02}m {secs:02}.{micros:0>2}s"
 
